@@ -203,7 +203,6 @@ public final class ChunkGenerationManager {
                             final List<ChunkPos> finalSyncBatch = new ArrayList<>(syncBatch);
                             final ServerLevel level = ds.level;
                             final UUID playerUUID = player.getUUID();
-                            
                             server.execute(() -> {
                                 ServerPlayer p = server.getPlayerList().getPlayer(playerUUID);
                                 if (p != null) {
@@ -212,9 +211,6 @@ public final class ChunkGenerationManager {
                                         if (c != null) {
                                             com.ethan.voxyworldgenv2.network.NetworkHandler.sendLODData(p, c);
                                             synced.add(syncPos.toLong());
-                                        } else {
-                                            // 如果区块其实不在内存里，发送失败，回滚
-                                            synced.remove(syncPos.toLong());
                                         }
                                     }
                                 }

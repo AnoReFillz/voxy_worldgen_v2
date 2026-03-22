@@ -174,12 +174,6 @@ public class NetworkHandler {
 
     public static void sendLODData(ServerPlayer player, LevelChunk chunk) {
         ChunkPos pos = chunk.getPos();
-        
-        if (player.level() != chunk.getLevel()) {
-            setSyncedState(player, pos, false);
-            return;
-        }
-
         int minY = chunk.getMinSectionY();
         List<LODDataPayload.SectionData> sections = new ArrayList<>();
         
