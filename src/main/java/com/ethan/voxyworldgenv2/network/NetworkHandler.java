@@ -5,13 +5,16 @@ import com.ethan.voxyworldgenv2.core.PlayerTracker;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -42,7 +45,7 @@ public class NetworkHandler {
         }
     }
 
-    public record LODDataPayload(ChunkPos pos, int minY, List<SectionData> sections) implements CustomPacketPayload {
+    public record LODDataPayload(ResourceKey<Level> dimension, ChunkPos pos, int minY, List<SectionData> sections) implements CustomPacketPayload {
         public static final Type<LODDataPayload> TYPE = new Type<>(LOD_DATA_ID);
         public static final StreamCodec<RegistryFriendlyByteBuf, LODDataPayload> CODEC = CustomPacketPayload.codec(LODDataPayload::write, LODDataPayload::new);
 
@@ -57,20 +60,26 @@ public class NetworkHandler {
 
             public static SectionData read(RegistryFriendlyByteBuf buf) {
                 return new SectionData(
-                    buf.readInt(), 
-                    buf.readByteArray(), 
-                    buf.readByteArray(), 
-                    buf.readNullable(b -> b.readByteArray()), 
+                    buf.readInt(),
+                    buf.readByteArray(),
+                    buf.readByteArray(),
+                    buf.readNullable(b -> b.readByteArray()),
                     buf.readNullable(b -> b.readByteArray())
                 );
             }
         }
 
         public LODDataPayload(RegistryFriendlyByteBuf buf) {
-            this(buf.readChunkPos(), buf.readInt(), buf.readCollection(ArrayList::new, b -> SectionData.read((RegistryFriendlyByteBuf) b)));
+            this(
+                ResourceKey.create(Registries.DIMENSION, Identifier.parse(buf.readUtf())),
+                buf.readChunkPos(),
+                buf.readInt(),
+                buf.readCollection(ArrayList::new, b -> SectionData.read((RegistryFriendlyByteBuf) b))
+            );
         }
 
         public void write(RegistryFriendlyByteBuf buf) {
+            buf.writeUtf(dimension.identifier().toString());
             buf.writeChunkPos(pos);
             buf.writeInt(minY);
             // cast to avoid ambiguous writeCollection / BiConsumer type issues
@@ -149,7 +158,7 @@ public class NetworkHandler {
         
         if (sections.isEmpty()) return;
 
-        LODDataPayload payload = new LODDataPayload(pos, minY, sections);
+        LODDataPayload payload = new LODDataPayload(chunk.getLevel().dimension(), pos, minY, sections);
         
         double maxDistSq = 4096.0 * 4096.0;
         
@@ -219,8 +228,7 @@ public class NetworkHandler {
             return;
         }
         
-        ServerPlayNetworking.send(player, new LODDataPayload(pos, minY, sections));
-        // double check, could be deleted.
+        ServerPlayNetworking.send(player, new LODDataPayload(chunk.getLevel().dimension(), pos, minY, sections));
         setSyncedState(player, pos, true);
     }
 

@@ -161,6 +161,11 @@ public final class ChunkGenerationManager {
                     continue;
                 }
 
+                if (!VoxyIntegration.isVoxyRenderingEnabled()) {
+                    Thread.sleep(500);
+                    continue;
+                }
+
                 if (tpsMonitor.isThrottled() || pauseCheck.getAsBoolean()) {
                     Thread.sleep(500);
                     continue;
