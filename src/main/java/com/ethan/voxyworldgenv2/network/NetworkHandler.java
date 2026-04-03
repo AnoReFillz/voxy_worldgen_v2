@@ -96,10 +96,10 @@ public class NetworkHandler {
     }
 
     public static void init() {
-        PayloadTypeRegistry.playC2S().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
         
-        PayloadTypeRegistry.playS2C().register(LODDataPayload.TYPE, LODDataPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(LODDataPayload.TYPE, LODDataPayload.CODEC);
         
         VoxyWorldGenV2.LOGGER.info("voxy networking initialized");
     }
@@ -108,9 +108,9 @@ public class NetworkHandler {
         var synced = PlayerTracker.getInstance().getSyncedChunks(player.getUUID());
         if (synced != null) {
             if (isSynced) {
-                synced.add(pos.toLong());
+                synced.add(pos.pack());
             } else {
-                synced.remove(pos.toLong());
+                synced.remove(pos.pack());
             }
         }
     }

@@ -73,7 +73,7 @@ public class NetworkClientHandler {
                 DataLayer bl = sectionData.blockLight() != null ? new DataLayer(sectionData.blockLight()) : null;
                 DataLayer sl = sectionData.skyLight() != null ? new DataLayer(sectionData.skyLight()) : null;
                 
-                VoxyIntegration.rawIngest(level, section, payload.pos().x, sectionData.y(), payload.pos().z, bl, sl);
+                VoxyIntegration.rawIngest(level, section, payload.pos().x(), sectionData.y(), payload.pos().z(), bl, sl);
                 
             } catch (Exception e) {
                 VoxyWorldGenV2.LOGGER.error("failed to handle LOD data for chunk " + payload.pos(), e);

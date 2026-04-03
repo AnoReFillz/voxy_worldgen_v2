@@ -24,7 +24,7 @@ public class ChunkUpdateTracker {
 
     public void markDirty(LevelChunk chunk) {
         dirtyChunks.computeIfAbsent(chunk.getLevel().dimension(), k -> ConcurrentHashMap.newKeySet())
-                .add(chunk.getPos().toLong());
+                .add(chunk.getPos().pack());
     }
 
     public void processDirty(ServerLevel level) {
@@ -42,8 +42,8 @@ public class ChunkUpdateTracker {
         Set<Long> toProcess = new java.util.HashSet<>(levelDirty);
         
         for (long posLong : toProcess) {
-            ChunkPos pos = new ChunkPos(posLong);
-            LevelChunk chunk = level.getChunkSource().getChunk(pos.x, pos.z, false);
+            ChunkPos pos = ChunkPos.unpack(posLong);
+            LevelChunk chunk = level.getChunkSource().getChunk(pos.x(), pos.z(), false);
             if (chunk != null) {
                 NetworkHandler.broadcastLODData(chunk);
             }
