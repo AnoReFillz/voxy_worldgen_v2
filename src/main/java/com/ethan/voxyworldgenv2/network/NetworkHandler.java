@@ -10,7 +10,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -24,15 +24,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class NetworkHandler {
-    public static final Identifier HANDSHAKE_ID = Identifier.parse(VoxyWorldGenV2.MOD_ID + ":handshake");
-    public static final Identifier LOD_DATA_ID = Identifier.parse(VoxyWorldGenV2.MOD_ID + ":lod_data");
+    public static final ResourceLocation HANDSHAKE_ID = ResourceLocation.parse(VoxyWorldGenV2.MOD_ID + ":handshake");
+    public static final ResourceLocation LOD_DATA_ID = ResourceLocation.parse(VoxyWorldGenV2.MOD_ID + ":lod_data");
 
-    // keep individual packets well under Netty's 2MB limit to prevent connection resets on public servers
+    // keep individual packets well under Netty's 2MB limit to prevent connection
+    // resets on public servers
     private static final int MAX_PACKET_BYTES = 32_768;
 
     public record HandshakePayload(boolean serverHasMod) implements CustomPacketPayload {
         public static final Type<HandshakePayload> TYPE = new Type<>(HANDSHAKE_ID);
-        public static final StreamCodec<FriendlyByteBuf, HandshakePayload> CODEC = CustomPacketPayload.codec(HandshakePayload::write, HandshakePayload::new);
+        public static final StreamCodec<FriendlyByteBuf, HandshakePayload> CODEC = CustomPacketPayload
+                .codec(HandshakePayload::write, HandshakePayload::new);
 
         public HandshakePayload(FriendlyByteBuf buf) {
             this(buf.readBoolean());
@@ -48,9 +50,11 @@ public class NetworkHandler {
         }
     }
 
-    public record LODDataPayload(ResourceKey<Level> dimension, ChunkPos pos, int minY, List<SectionData> sections) implements CustomPacketPayload {
+    public record LODDataPayload(ResourceKey<Level> dimension, ChunkPos pos, int minY, List<SectionData> sections)
+            implements CustomPacketPayload {
         public static final Type<LODDataPayload> TYPE = new Type<>(LOD_DATA_ID);
-        public static final StreamCodec<RegistryFriendlyByteBuf, LODDataPayload> CODEC = CustomPacketPayload.codec(LODDataPayload::write, LODDataPayload::new);
+        public static final StreamCodec<RegistryFriendlyByteBuf, LODDataPayload> CODEC = CustomPacketPayload
+                .codec(LODDataPayload::write, LODDataPayload::new);
 
         public record SectionData(int y, byte[] states, byte[] biomes, byte[] blockLight, byte[] skyLight) {
             public void write(RegistryFriendlyByteBuf buf) {
@@ -63,26 +67,24 @@ public class NetworkHandler {
 
             public static SectionData read(RegistryFriendlyByteBuf buf) {
                 return new SectionData(
-                    buf.readInt(),
-                    buf.readByteArray(),
-                    buf.readByteArray(),
-                    buf.readNullable(b -> b.readByteArray()),
-                    buf.readNullable(b -> b.readByteArray())
-                );
+                        buf.readInt(),
+                        buf.readByteArray(),
+                        buf.readByteArray(),
+                        buf.readNullable(b -> b.readByteArray()),
+                        buf.readNullable(b -> b.readByteArray()));
             }
         }
 
         public LODDataPayload(RegistryFriendlyByteBuf buf) {
             this(
-                ResourceKey.create(Registries.DIMENSION, Identifier.parse(buf.readUtf())),
-                buf.readChunkPos(),
-                buf.readInt(),
-                buf.readCollection(ArrayList::new, b -> SectionData.read((RegistryFriendlyByteBuf) b))
-            );
+                    ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(buf.readUtf())),
+                    buf.readChunkPos(),
+                    buf.readInt(),
+                    buf.readCollection(ArrayList::new, b -> SectionData.read((RegistryFriendlyByteBuf) b)));
         }
 
         public void write(RegistryFriendlyByteBuf buf) {
-            buf.writeUtf(dimension.identifier().toString());
+            buf.writeUtf(dimension.location().toString());
             buf.writeChunkPos(pos);
             buf.writeInt(minY);
             // cast to avoid ambiguous writeCollection / BiConsumer type issues
@@ -98,9 +100,9 @@ public class NetworkHandler {
     public static void init() {
         PayloadTypeRegistry.playC2S().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
         PayloadTypeRegistry.playS2C().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
-        
+
         PayloadTypeRegistry.playS2C().register(LODDataPayload.TYPE, LODDataPayload.CODEC);
-        
+
         VoxyWorldGenV2.LOGGER.info("voxy networking initialized");
     }
 
@@ -117,10 +119,11 @@ public class NetworkHandler {
 
     public static void broadcastLODData(LevelChunk chunk) {
         ChunkPos pos = chunk.getPos();
-        int minY = chunk.getMinSectionY();
+        int minY = chunk.getMinSection();
         List<LODDataPayload.SectionData> sections = buildSections(chunk);
 
-        if (sections.isEmpty()) return;
+        if (sections.isEmpty())
+            return;
 
         double maxDistSq = 4096.0 * 4096.0;
 
@@ -139,7 +142,7 @@ public class NetworkHandler {
 
     public static void sendLODData(ServerPlayer player, LevelChunk chunk) {
         ChunkPos pos = chunk.getPos();
-        int minY = chunk.getMinSectionY();
+        int minY = chunk.getMinSection();
         List<LODDataPayload.SectionData> sections = buildSections(chunk);
 
         if (sections.isEmpty()) {
@@ -153,24 +156,27 @@ public class NetworkHandler {
 
     private static List<LODDataPayload.SectionData> buildSections(LevelChunk chunk) {
         ChunkPos pos = chunk.getPos();
-        int minY = chunk.getMinSectionY();
+        int minY = chunk.getMinSection();
         List<LODDataPayload.SectionData> sections = new ArrayList<>();
         var lightEngine = chunk.getLevel().getLightEngine();
 
         for (int i = 0; i < chunk.getSections().length; i++) {
             LevelChunkSection section = chunk.getSections()[i];
-            if (section == null || section.hasOnlyAir()) continue;
+            if (section == null || section.hasOnlyAir())
+                continue;
 
             io.netty.buffer.ByteBuf statesRaw = io.netty.buffer.Unpooled.buffer();
             io.netty.buffer.ByteBuf biomesRaw = io.netty.buffer.Unpooled.buffer();
             byte[] states, biomes;
             try {
-                RegistryFriendlyByteBuf statesBuf = new RegistryFriendlyByteBuf(new FriendlyByteBuf(statesRaw), chunk.getLevel().registryAccess());
+                RegistryFriendlyByteBuf statesBuf = new RegistryFriendlyByteBuf(new FriendlyByteBuf(statesRaw),
+                        chunk.getLevel().registryAccess());
                 section.getStates().write(statesBuf);
                 states = new byte[statesBuf.readableBytes()];
                 statesBuf.readBytes(states);
 
-                RegistryFriendlyByteBuf biomesBuf = new RegistryFriendlyByteBuf(new FriendlyByteBuf(biomesRaw), chunk.getLevel().registryAccess());
+                RegistryFriendlyByteBuf biomesBuf = new RegistryFriendlyByteBuf(new FriendlyByteBuf(biomesRaw),
+                        chunk.getLevel().registryAccess());
                 section.getBiomes().write(biomesBuf);
                 biomes = new byte[biomesBuf.readableBytes()];
                 biomesBuf.readBytes(biomes);
@@ -184,25 +190,25 @@ public class NetworkHandler {
             DataLayer sl = lightEngine.getLayerListener(LightLayer.SKY).getDataLayerData(sectionPos);
 
             sections.add(new LODDataPayload.SectionData(
-                minY + i,
-                states,
-                biomes,
-                bl != null ? bl.getData().clone() : null,
-                sl != null ? sl.getData().clone() : null
-            ));
+                    minY + i,
+                    states,
+                    biomes,
+                    bl != null ? bl.getData().clone() : null,
+                    sl != null ? sl.getData().clone() : null));
         }
 
         return sections;
     }
 
-    private static void sendSectionsInBatches(ServerPlayer player, ResourceKey<Level> dimension, ChunkPos pos, int minY, List<LODDataPayload.SectionData> sections) {
+    private static void sendSectionsInBatches(ServerPlayer player, ResourceKey<Level> dimension, ChunkPos pos, int minY,
+            List<LODDataPayload.SectionData> sections) {
         List<LODDataPayload.SectionData> batch = new ArrayList<>();
         int batchBytes = 0;
 
         for (LODDataPayload.SectionData sd : sections) {
             int sectionBytes = sd.states().length + sd.biomes().length
-                + (sd.blockLight() != null ? sd.blockLight().length : 0)
-                + (sd.skyLight() != null ? sd.skyLight().length : 0);
+                    + (sd.blockLight() != null ? sd.blockLight().length : 0)
+                    + (sd.skyLight() != null ? sd.skyLight().length : 0);
 
             if (!batch.isEmpty() && batchBytes + sectionBytes > MAX_PACKET_BYTES) {
                 ServerPlayNetworking.send(player, new LODDataPayload(dimension, pos, minY, batch));

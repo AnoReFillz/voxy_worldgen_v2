@@ -17,16 +17,18 @@ public final class VoxyIntegration {
     private static MethodHandle worldIdentifierOfMethod;
     private static MethodHandle voxyEnabledMethod;
 
-    private VoxyIntegration() {}
+    private VoxyIntegration() {
+    }
 
     private static void initialize() {
-        if (initialized) return;
+        if (initialized)
+            return;
         initialized = true;
 
         try {
             Class<?> ingestServiceClass = Class.forName("me.cortex.voxy.common.world.service.VoxelIngestService");
             Class<?> worldIdentifierClass = Class.forName("me.cortex.voxy.commonImpl.WorldIdentifier");
-            
+
             Object serviceInstance = null;
             try {
                 Field instanceField = ingestServiceClass.getDeclaredField("INSTANCE");
@@ -37,13 +39,15 @@ public final class VoxyIntegration {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
             // 1. find main ingest method
-            String[] commonMethods = {"ingestChunk", "tryAutoIngestChunk", "enqueueIngest", "ingest"};
+            String[] commonMethods = { "ingestChunk", "tryAutoIngestChunk", "enqueueIngest", "ingest" };
             Method targetMethod = null;
             for (String methodName : commonMethods) {
                 try {
                     targetMethod = ingestServiceClass.getMethod(methodName, LevelChunk.class);
-                    if (targetMethod != null) break;
-                } catch (NoSuchMethodException ignored) {}
+                    if (targetMethod != null)
+                        break;
+                } catch (NoSuchMethodException ignored) {
+                }
             }
 
             if (targetMethod != null) {
@@ -56,20 +60,22 @@ public final class VoxyIntegration {
 
             // 2. find rawIngest method
             try {
-                Method rawIngest = ingestServiceClass.getMethod("rawIngest", 
-                    worldIdentifierClass, 
-                    net.minecraft.world.level.chunk.LevelChunkSection.class, 
-                    int.class, int.class, int.class, 
-                    net.minecraft.world.level.chunk.DataLayer.class, 
-                    net.minecraft.world.level.chunk.DataLayer.class);
+                Method rawIngest = ingestServiceClass.getMethod("rawIngest",
+                        worldIdentifierClass,
+                        net.minecraft.world.level.chunk.LevelChunkSection.class,
+                        int.class, int.class, int.class,
+                        net.minecraft.world.level.chunk.DataLayer.class,
+                        net.minecraft.world.level.chunk.DataLayer.class);
                 rawIngestMethod = lookup.unreflect(rawIngest);
-            } catch (NoSuchMethodException ignored) {}
+            } catch (NoSuchMethodException ignored) {
+            }
 
             // 3. find WorldIdentifier.of method
             try {
                 Method ofMethod = worldIdentifierClass.getMethod("of", net.minecraft.world.level.Level.class);
                 worldIdentifierOfMethod = lookup.unreflect(ofMethod);
-            } catch (NoSuchMethodException ignored) {}
+            } catch (NoSuchMethodException ignored) {
+            }
 
             // find voxy enabled/active state method
             try {
@@ -83,7 +89,8 @@ public final class VoxyIntegration {
                         Field enabledField = voxyConfigClass.getDeclaredField("enabled");
                         enabledField.setAccessible(true);
                         voxyEnabledMethod = lookup.unreflectGetter(enabledField);
-                    } catch (Exception ignored2) {}
+                    } catch (Exception ignored2) {
+                    }
                 }
             } catch (ClassNotFoundException ignored) {
                 // try alternate class names
@@ -92,11 +99,14 @@ public final class VoxyIntegration {
                     try {
                         Method isEnabledMethod = voxyClientClass.getMethod("isEnabled");
                         voxyEnabledMethod = lookup.unreflect(isEnabledMethod);
-                    } catch (NoSuchMethodException ignored2) {}
-                } catch (ClassNotFoundException ignored3) {}
+                    } catch (NoSuchMethodException ignored2) {
+                    }
+                } catch (ClassNotFoundException ignored3) {
+                }
             }
 
-            VoxyWorldGenV2.LOGGER.info("voxy integration initialized (enabled: {}, raw: {}, voxyEnabled: {})", enabled, rawIngestMethod != null, voxyEnabledMethod != null);
+            VoxyWorldGenV2.LOGGER.info("voxy integration initialized (enabled: {}, raw: {}, voxyEnabled: {})", enabled,
+                    rawIngestMethod != null, voxyEnabledMethod != null);
 
         } catch (ClassNotFoundException e) {
             VoxyWorldGenV2.LOGGER.info("voxy not present, integration disabled");
@@ -108,8 +118,10 @@ public final class VoxyIntegration {
     }
 
     public static void ingestChunk(LevelChunk chunk) {
-        if (!initialized) initialize();
-        if (!enabled || ingestMethod == null) return;
+        if (!initialized)
+            initialize();
+        if (!enabled || ingestMethod == null)
+            return;
 
         try {
             ingestMethod.invoke(chunk);
@@ -119,61 +131,78 @@ public final class VoxyIntegration {
     }
 
     public static void rawIngest(LevelChunk chunk, net.minecraft.world.level.chunk.DataLayer skyLight) {
-        if (!initialized) initialize();
-        if (rawIngestMethod == null || worldIdentifierOfMethod == null) return;
+        if (!initialized)
+            initialize();
+        if (rawIngestMethod == null || worldIdentifierOfMethod == null)
+            return;
 
         try {
             net.minecraft.world.level.chunk.LevelChunkSection[] sections = chunk.getSections();
             int cx = chunk.getPos().x;
             int cz = chunk.getPos().z;
-            int minY = chunk.getMinSectionY();
-            
+            int minY = chunk.getMinSection();
+
             // get worldid once per chunk
             Object worldId = worldIdentifierOfMethod.invoke(chunk.getLevel());
-            if (worldId == null) return;
+            if (worldId == null)
+                return;
 
             for (int i = 0; i < sections.length; i++) {
                 net.minecraft.world.level.chunk.LevelChunkSection section = sections[i];
-                if (section == null || section.hasOnlyAir()) continue;
-                
+                if (section == null || section.hasOnlyAir())
+                    continue;
+
                 rawIngestMethod.invoke(worldId, section, cx, minY + i, cz, null, skyLight);
             }
         } catch (Throwable e) {
             VoxyWorldGenV2.LOGGER.error("failed to raw ingest chunk", e);
         }
     }
-    
-    public static void rawIngest(net.minecraft.world.level.Level level, net.minecraft.world.level.chunk.LevelChunkSection section, int cx, int cy, int cz, net.minecraft.world.level.chunk.DataLayer blockLight, net.minecraft.world.level.chunk.DataLayer skyLight) {
-        if (!initialized) initialize();
-        if (rawIngestMethod == null || worldIdentifierOfMethod == null) return;
+
+    public static void rawIngest(net.minecraft.world.level.Level level,
+            net.minecraft.world.level.chunk.LevelChunkSection section, int cx, int cy, int cz,
+            net.minecraft.world.level.chunk.DataLayer blockLight, net.minecraft.world.level.chunk.DataLayer skyLight) {
+        if (!initialized)
+            initialize();
+        if (rawIngestMethod == null || worldIdentifierOfMethod == null)
+            return;
 
         try {
             Object worldId = worldIdentifierOfMethod.invoke(level);
-            if (worldId == null) return;
-            
+            if (worldId == null)
+                return;
+
             rawIngestMethod.invoke(worldId, section, cx, cy, cz, blockLight, skyLight);
         } catch (Throwable e) {
             VoxyWorldGenV2.LOGGER.error("failed to raw ingest section", e);
         }
     }
 
-    public static void rawIngest(net.minecraft.world.level.Level level, net.minecraft.world.level.chunk.LevelChunkSection section, int cx, int cy, int cz, net.minecraft.world.level.chunk.DataLayer skyLight) {
+    public static void rawIngest(net.minecraft.world.level.Level level,
+            net.minecraft.world.level.chunk.LevelChunkSection section, int cx, int cy, int cz,
+            net.minecraft.world.level.chunk.DataLayer skyLight) {
         rawIngest(level, section, cx, cy, cz, null, skyLight);
     }
 
     public static boolean isVoxyAvailable() {
-        if (!initialized) initialize();
+        if (!initialized)
+            initialize();
         return enabled;
     }
 
     public static boolean isVoxyRenderingEnabled() {
-        if (!initialized) initialize();
-        if (!enabled) return true; // voxy not present, don't suppress generation
-        if (voxyEnabledMethod == null) return true; // can't determine state, assume enabled
+        if (!initialized)
+            initialize();
+        if (!enabled)
+            return true; // voxy not present, don't suppress generation
+        if (voxyEnabledMethod == null)
+            return true; // can't determine state, assume enabled
         try {
             Object result = voxyEnabledMethod.invoke();
-            if (result instanceof Boolean b) return b;
-        } catch (Throwable ignored) {}
+            if (result instanceof Boolean b)
+                return b;
+        } catch (Throwable ignored) {
+        }
         return true;
     }
 }

@@ -23,14 +23,16 @@ public final class TellusIntegration {
     private static final AtomicInteger threadCounter = new AtomicInteger();
     private static final Set<ChunkPos> buildingChunks = ConcurrentHashMap.newKeySet();
 
-    private TellusIntegration() {}
+    private TellusIntegration() {
+    }
 
     public static void shutdown() {
         if (workerPool != null) {
             workerPool.shutdownNow();
             try {
                 workerPool.awaitTermination(2, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException ignored) {
+            }
             workerPool = null;
         }
         buildingChunks.clear();
@@ -39,7 +41,8 @@ public final class TellusIntegration {
     }
 
     private static void initialize() {
-        if (initialized) return;
+        if (initialized)
+            return;
         initialized = true;
 
         TellusSampler.initialize();
@@ -60,15 +63,18 @@ public final class TellusIntegration {
     }
 
     public static boolean isTellusWorld(ServerLevel level) {
-        if (!initialized) initialize();
-        if (!TellusSampler.isTellusPresent()) return false;
+        if (!initialized)
+            initialize();
+        if (!TellusSampler.isTellusPresent())
+            return false;
         Object generator = level.getChunkSource().getGenerator();
         return generator != null && generator.getClass().getName().contains("EarthChunkGenerator");
     }
 
     public static void enqueueGenerate(ServerLevel level, ChunkPos pos, Runnable onComplete) {
         if (workerPool == null || !buildingChunks.add(pos)) {
-            if (onComplete != null) onComplete.run();
+            if (onComplete != null)
+                onComplete.run();
             return;
         }
         workerPool.execute(() -> {
@@ -80,26 +86,35 @@ public final class TellusIntegration {
                 }
             } finally {
                 buildingChunks.remove(pos);
-                if (onComplete != null) onComplete.run();
+                if (onComplete != null)
+                    onComplete.run();
             }
         });
     }
 
-    private record Palette(BlockState top, BlockState filler) {}
+    private record Palette(BlockState top, BlockState filler) {
+    }
 
     private static Palette getPalette(Holder<Biome> biome, Random random) {
         if (biome != null) {
             if (biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_RIVER)) {
                 int roll = random.nextInt(100);
-                if (roll < 10) return new Palette(Blocks.GRAVEL.defaultBlockState(), Blocks.GRAVEL.defaultBlockState());
-                if (roll < 15) return new Palette(Blocks.CLAY.defaultBlockState(), Blocks.CLAY.defaultBlockState());
+                if (roll < 10)
+                    return new Palette(Blocks.GRAVEL.defaultBlockState(), Blocks.GRAVEL.defaultBlockState());
+                if (roll < 15)
+                    return new Palette(Blocks.CLAY.defaultBlockState(), Blocks.CLAY.defaultBlockState());
                 return new Palette(Blocks.SAND.defaultBlockState(), Blocks.SAND.defaultBlockState());
             }
-            if (biome.is(Biomes.DESERT)) return new Palette(Blocks.SAND.defaultBlockState(), Blocks.SANDSTONE.defaultBlockState());
-            if (biome.is(BiomeTags.IS_BEACH)) return new Palette(Blocks.SAND.defaultBlockState(), Blocks.SAND.defaultBlockState());
-            if (biome.is(BiomeTags.IS_BADLANDS)) return new Palette(Blocks.RED_SAND.defaultBlockState(), Blocks.TERRACOTTA.defaultBlockState());
-            if (biome.is(Biomes.MANGROVE_SWAMP)) return new Palette(Blocks.MUD.defaultBlockState(), Blocks.MUD.defaultBlockState());
-            if (biome.is(Biomes.SNOWY_PLAINS) || biome.is(Biomes.SNOWY_TAIGA)) return new Palette(Blocks.SNOW_BLOCK.defaultBlockState(), Blocks.DIRT.defaultBlockState());
+            if (biome.is(Biomes.DESERT))
+                return new Palette(Blocks.SAND.defaultBlockState(), Blocks.SANDSTONE.defaultBlockState());
+            if (biome.is(BiomeTags.IS_BEACH))
+                return new Palette(Blocks.SAND.defaultBlockState(), Blocks.SAND.defaultBlockState());
+            if (biome.is(BiomeTags.IS_BADLANDS))
+                return new Palette(Blocks.RED_SAND.defaultBlockState(), Blocks.TERRACOTTA.defaultBlockState());
+            if (biome.is(Biomes.MANGROVE_SWAMP))
+                return new Palette(Blocks.MUD.defaultBlockState(), Blocks.MUD.defaultBlockState());
+            if (biome.is(Biomes.SNOWY_PLAINS) || biome.is(Biomes.SNOWY_TAIGA))
+                return new Palette(Blocks.SNOW_BLOCK.defaultBlockState(), Blocks.DIRT.defaultBlockState());
         }
         return new Palette(Blocks.GRASS_BLOCK.defaultBlockState(), Blocks.DIRT.defaultBlockState());
     }
@@ -111,21 +126,25 @@ public final class TellusIntegration {
     }
 
     private static void buildAndIngest(ServerLevel level, ChunkPos pos, TellusSampler.TellusChunkData data) {
-        if (!VoxyIngester.isAvailable()) return;
+        if (!VoxyIngester.isAvailable())
+            return;
         try {
             Object voxy = VoxyIngester.getVoxyInstance();
-            if (voxy == null) return;
+            if (voxy == null)
+                return;
             Object engine = VoxyIngester.getWorldEngine(voxy, level);
-            if (engine == null) return;
+            if (engine == null)
+                return;
             Object mapper = VoxyIngester.getMapper(engine);
-            if (mapper == null) return;
+            if (mapper == null)
+                return;
 
             BiomeSource biomeSource = level.getChunkSource().getGenerator().getBiomeSource();
             Climate.Sampler sampler = level.getChunkSource().randomState().sampler();
-            
+
             int minX = pos.getMinBlockX();
             int minZ = pos.getMinBlockZ();
-            
+
             Map<Integer, Holder<Biome>> biomeIdToHolder = new HashMap<>();
             Map<Holder<Biome>, Integer> biomeHolderToId = new IdentityHashMap<>();
             Random random = new Random(pos.toLong());
@@ -151,10 +170,13 @@ public final class TellusIntegration {
             int stoneId = VoxyIngester.getBlockId(mapper, Blocks.STONE.defaultBlockState());
             int deepId = VoxyIngester.getBlockId(mapper, Blocks.DEEPSLATE.defaultBlockState());
             int waterId = VoxyIngester.getBlockId(mapper, Blocks.WATER.defaultBlockState());
-            if (waterId == 0) waterId = VoxyIngester.getBlockId(mapper, Blocks.ICE.defaultBlockState());
-            if (waterId == 0) waterId = stoneId;
+            if (waterId == 0)
+                waterId = VoxyIngester.getBlockId(mapper, Blocks.ICE.defaultBlockState());
+            if (waterId == 0)
+                waterId = stoneId;
 
-            // pre-calculate a slightly larger water grid to avoid cliffs at chunk boundaries
+            // pre-calculate a slightly larger water grid to avoid cliffs at chunk
+            // boundaries
             // this allows the shoreline check to see past the 16x16 area
             boolean[] expandedWater = new boolean[24 * 24];
             for (int dz = -4; dz < 20; dz++) {
@@ -176,15 +198,16 @@ public final class TellusIntegration {
                 int wz = minZ + (i >> 4);
                 int h = heights[i];
                 int c = cover[i] & 0xFF;
-                
+
                 boolean isOcean = (c == 0 && h <= seaLevel);
                 boolean hasWaterValue = hasWaters[i] || (c == 80 || c == 95 || isOcean);
-                
+
                 if (hasWaterValue) {
                     int waterH = hasWaters[i] ? waterHeads[i] : seaLevel;
-                    if (waterH <= h) waterH = h + 1;
+                    if (waterH <= h)
+                        waterH = h + 1;
                     waterHeads[i] = waterH;
-                    
+
                     if (!isOcean) {
                         // determine distance to shore for water pixels to enable shallow slopes
                         int distToShore = 5;
@@ -194,14 +217,20 @@ public final class TellusIntegration {
                             boolean foundLand = false;
                             for (int dz = -d; dz <= d; dz++) {
                                 for (int dx = -d; dx <= d; dx++) {
-                                    if (Math.abs(dx) < d && Math.abs(dz) < d) continue;
+                                    if (Math.abs(dx) < d && Math.abs(dz) < d)
+                                        continue;
                                     if (!expandedWater[(iz + dz + 4) * 24 + (ix + dx + 4)]) {
-                                        foundLand = true; break;
+                                        foundLand = true;
+                                        break;
                                     }
                                 }
-                                if (foundLand) break;
+                                if (foundLand)
+                                    break;
                             }
-                            if (foundLand) { distToShore = d; break; }
+                            if (foundLand) {
+                                distToShore = d;
+                                break;
+                            }
                         }
 
                         // make water shallow near land
@@ -211,13 +240,14 @@ public final class TellusIntegration {
                             heights[i] = h;
                         }
                     } else if (h > seaLevel - 8) {
-                         h = seaLevel - 8;
-                         heights[i] = h;
+                        h = seaLevel - 8;
+                        heights[i] = h;
                     }
                     hasWaters[i] = true;
                 }
 
-                Holder<Biome> biome = biomeSource.getNoiseBiome(QuartPos.fromBlock(wx), QuartPos.fromBlock(h), QuartPos.fromBlock(wz), sampler);
+                Holder<Biome> biome = biomeSource.getNoiseBiome(QuartPos.fromBlock(wx), QuartPos.fromBlock(h),
+                        QuartPos.fromBlock(wz), sampler);
                 int bId = biomeHolderToId.computeIfAbsent(biome, b -> {
                     int id = VoxyIngester.getBiomeId(mapper, b);
                     biomeIdToHolder.put(id, b);
@@ -233,7 +263,7 @@ public final class TellusIntegration {
                 int slope = slopes[i] & 0xFF;
                 int bId = biomeIds[i];
                 Holder<Biome> biome = biomeIdToHolder.get(bId);
-                
+
                 Palette p = getPalette(biome, random);
 
                 colStoneIds[i] = VoxyIngester.composeId(stoneId, bId, 15);
@@ -255,34 +285,43 @@ public final class TellusIntegration {
                     int topBlockId = VoxyIngester.getBlockId(mapper, p.top);
                     colTopIds[i] = VoxyIngester.composeId(topBlockId, bId, 15);
                     colFillerIds[i] = VoxyIngester.composeId(VoxyIngester.getBlockId(mapper, p.filler), bId, 15);
-                    vegAllowed[i] = (topBlockId == grassId_Voxy) && 
-                                    (biome == null || (!biome.is(BiomeTags.IS_BADLANDS) && !biome.is(Biomes.DESERT))) && 
-                                    !hasWaters[i];
+                    vegAllowed[i] = (topBlockId == grassId_Voxy) &&
+                            (biome == null || (!biome.is(BiomeTags.IS_BADLANDS) && !biome.is(Biomes.DESERT))) &&
+                            !hasWaters[i];
                 }
             }
 
             Map<BlockPos, Long> propBlocks = new HashMap<>();
-            TellusWorldFeatures.placeProceduralTrees(level, pos, data, mapper, propBlocks, biomeIds, biomeSource, sampler, waterHeads);
+            TellusWorldFeatures.placeProceduralTrees(level, pos, data, mapper, propBlocks, biomeIds, biomeSource,
+                    sampler, waterHeads);
             TellusWorldFeatures.placeVegetation(pos, data, mapper, propBlocks, biomeIds, vegAllowed);
             TellusWorldFeatures.placeUnderwaterVegetation(pos, data, mapper, propBlocks, biomeIds, hasWaters);
 
             long brightAir = VoxyIngester.composeId(0, 0, 15);
-            int minSY = level.getMinSectionY();
+            int minSY = level.getMinSection();
             int sCount = level.getSectionsCount();
 
             int maxHV = -64;
-            for (int h : heights) if (h > maxHV) maxHV = h;
-            for (int i = 0; i < 256; i++) if (hasWaters[i] && waterHeads[i] > maxHV) maxHV = waterHeads[i];
-            for (BlockPos p : propBlocks.keySet()) if (p.getY() > maxHV) maxHV = p.getY();
+            for (int h : heights)
+                if (h > maxHV)
+                    maxHV = h;
+            for (int i = 0; i < 256; i++)
+                if (hasWaters[i] && waterHeads[i] > maxHV)
+                    maxHV = waterHeads[i];
+            for (BlockPos p : propBlocks.keySet())
+                if (p.getY() > maxHV)
+                    maxHV = p.getY();
 
             for (int sy = 0; sy < sCount; sy++) {
                 int sY = minSY + sy;
                 int bY = sY << 4;
-                if (bY > maxHV + 16) continue;
+                if (bY > maxHV + 16)
+                    continue;
 
                 Object vs = VoxyIngester.createSection(pos.x, sY, pos.z);
                 long[] dataArray = VoxyIngester.getSectionData(vs);
-                if (dataArray == null) continue;
+                if (dataArray == null)
+                    continue;
                 Arrays.fill(dataArray, brightAir);
 
                 int nAir = 0;
@@ -292,17 +331,18 @@ public final class TellusIntegration {
                     int lz = (i >> 4) & 15;
                     int lx = i & 15;
                     int col = lz << 4 | lx;
-                    
+
                     int wX = minX + lx;
                     int wY = bY + ly;
                     int wZ = minZ + lz;
-                    
+
                     int h = heights[col];
                     boolean isTerrain = wY <= h;
                     boolean isWater = !isTerrain && hasWaters[col] && wY <= waterHeads[col];
 
                     if (isTerrain) {
-                        dataArray[i] = (wY == h) ? colTopIds[col] : (wY > h - 4) ? colFillerIds[col] : (wY < 0) ? colDeepIds[col] : colStoneIds[col];
+                        dataArray[i] = (wY == h) ? colTopIds[col]
+                                : (wY > h - 4) ? colFillerIds[col] : (wY < 0) ? colDeepIds[col] : colStoneIds[col];
                         nAir++;
                     } else if (isWater) {
                         dataArray[i] = colWaterIds[col];
@@ -312,7 +352,8 @@ public final class TellusIntegration {
                         Long propId = propBlocks.get(cursor);
                         if (propId != null) {
                             dataArray[i] = propId;
-                            if (propId != brightAir) nAir++;
+                            if (propId != brightAir)
+                                nAir++;
                         }
                     }
                 }
