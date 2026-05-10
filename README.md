@@ -1,4 +1,4 @@
-# Voxy World Gen V2
+# Voxy World Gen V2 1.21.1 NeoForge
 
 ![Logo](src/main/resources/logo.png)
 
@@ -15,7 +15,6 @@ This is a rewrite of my old Voxy World Gen mod, this mod is NOT a fork of the pa
 
 - **Minecraft**: 1.21.1
 - **Java**: 21 (Required)
-- **Fabric API**
 - **Cloth Config**: >= 15.0.127
 
 ## Building
